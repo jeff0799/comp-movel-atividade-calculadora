@@ -1,53 +1,89 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useState } from 'react';
 const range = (start, end, length = end - start + 1) => Array.from({ length }, (_, i) => start + i)
 
-const buttons = [
-  {
-    text: "AC",
-    color: "#27f5ce"
-  }
-  , {
-    text: "+/-",
-    color: "#27f5ce"
 
-  }, {
-    text: "%",
-    color: "#27f5ce"
 
-  }, {
-    text: "÷",
-    color: "#e26262"
-  },
-  { text: "7" },
-  { text: "8" },
-  { text: "9" }, {
-    text: "X",
-    color: "#e26262"
-  },
-  { text: "4" },
-  { text: "5" },
-  { text: "6" }, {
-    text: "-",
-    color: "#e26262"
-  },
-  { text: "1" },
-  { text: "2" },
-  { text: "3" }, { text: "+", color: "#e26262" },
-  { text: <Feather name="rotate-ccw" size={24} /> },
-  { text: "0" },
-  { text: "." }, { text: "=", color: "#e26262" }]
-const history = ["9*8", "6+4", "5/3", "1+1"]
-
-const actualValue = 1238
 export default function App() {
+  const [history, sethistory] = useState(['1+1', '2*8'])
+  const [currentValue, setCurrentValue] = useState('25')
+
+  const invertSignalIcon = <>
+    <Text style={{
+      position: 'absolute',
+      color: '#27f5ce',
+      fontSize: 20,
+      top: 0,
+      left: '30%'
+    }}>
+      +
+    </Text>
+    <Text style={{
+      position: 'absolute',
+      color: '#27f5ce',
+      fontSize: 28,
+      transform: [{rotate: '10deg'}]
+    }}>
+      /
+    </Text>
+    <Text style={{
+      position: 'absolute',
+      color: '#27f5ce',
+      fontSize: 20,
+      bottom:0,
+      right:'35%'
+    }}>
+      -
+    </Text>
+  </>
+
+  const buttons = [
+    {
+      text: currentValue ? 'C' : 'AC',
+      color: "#27f5ce"
+    }
+    , {
+      text: '+/-',
+      color: "#27f5ce"
+
+    }, {
+      text: "%",
+      color: "#27f5ce"
+
+    }, {
+      text: "÷",
+      color: "#e26262"
+    },
+    { text: "7" },
+    { text: "8" },
+    { text: "9" }, {
+      text: "X",
+      color: "#e26262"
+    },
+    { text: "4" },
+    { text: "5" },
+    { text: "6" }, {
+      text: "-",
+      color: "#e26262"
+    },
+    { text: "1" },
+    { text: "2" },
+    { text: "3" }, { text: "+", color: "#e26262" },
+    { text: <Feather name="rotate-ccw" size={24} /> },
+    { text: "0" },
+    { text: "." }, { text: "=", color: "#e26262" }]
+
   return (
     <View style={styles.container}>
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
           {history.map(value => {
-            return <Text style={styles.historyText}>
+            return <Text
+              key={value}
+              style={styles.historyText}
+            >
               {value}
             </Text>
 
@@ -57,8 +93,7 @@ export default function App() {
 
         <View style={styles.resultContainer}>
           <Text style={styles.resultText}>
-
-            {actualValue}
+            {currentValue}
           </Text>
 
         </View>
@@ -68,37 +103,25 @@ export default function App() {
         <View style={styles.column}>
 
           {range(0, 4).map((row) => {
-            return <View style={styles.row}>
+            return <View key={row} style={styles.row}>
               {range(0, 3).map((column) => {
+                const button = buttons[row * 4 + column]
                 return <View
-                  style={{
-                    flex: 1,
-                    width: 40,
-                    height: 40,
-                    justifyContent: "center",
-                    alignItems: "center"
-                  }}>
+                  key={column}
+                  style={styles.button}
+                >{button.text === "+/-" ? invertSignalIcon :
                   <Text style={{
                     fontSize: 36,
-                    color: buttons[row * 4 + column].color ? buttons[row * 4 + column].color : "#f4f4f5"
+                    color: button.color ? button.color : "#f4f4f5"
                   }}>
-                    {buttons[row * 4 + column].text}
+                    {button.text}
                   </Text>
+                  }
                 </View>
               })}
-
-
-
             </View>
           })}
-
-
-
-
         </View>
-
-
-
       </View>
     </View>
   )
@@ -155,7 +178,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     flex: 1,
-    gap: 10
+    gap: 10,
   },
   row: {
     flexDirection: "row",
@@ -164,7 +187,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexGrow: 1,
     width: "100%",
-    gap: 30
+    gap: 30,
+  },
+  button: {
+    flex: 1,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: 'purple'
   }
 
 });
