@@ -8,7 +8,7 @@ export default function InvertSignalSymbol({color}){
                 position: 'absolute',
                 color: color,
                 fontSize: 20,
-                top: 0,
+                top: '10%',
                 left: '30%'
             }}>
                 +
@@ -25,7 +25,7 @@ export default function InvertSignalSymbol({color}){
                 position: 'absolute',
                 color: color,
                 fontSize: 20,
-                bottom: 0,
+                bottom: '10%',
                 right: '35%'
             }}>
                 -

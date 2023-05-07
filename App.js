@@ -353,10 +353,11 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     width: 40,
-    height: 40,
+    height: 60,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: 'purple'
+    backgroundColor: '#14161A',
+    borderRadius:10
   }
 
 });
