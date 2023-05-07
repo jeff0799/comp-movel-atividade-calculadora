@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, ToastAndroid } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 const range = (start, end, length = end - start + 1) => Array.from({ length }, (_, i) => start + i)
@@ -6,8 +6,8 @@ const range = (start, end, length = end - start + 1) => Array.from({ length }, (
 
 
 export default function App() {
-  const [history, sethistory] = useState(['1+1', '2*8'])
-  const [currentValue, setCurrentValue] = useState('25')
+  const [history, setHistory] = useState([])
+  const [currentExpression, setCurrentExpression] = useState('-1')
 
   const invertSignalIcon = <>
     <Text style={{
@@ -23,7 +23,7 @@ export default function App() {
       position: 'absolute',
       color: '#27f5ce',
       fontSize: 28,
-      transform: [{rotate: '10deg'}]
+      transform: [{ rotate: '10deg' }]
     }}>
       /
     </Text>
@@ -31,8 +31,8 @@ export default function App() {
       position: 'absolute',
       color: '#27f5ce',
       fontSize: 20,
-      bottom:0,
-      right:'35%'
+      bottom: 0,
+      right: '35%'
     }}>
       -
     </Text>
@@ -40,48 +40,159 @@ export default function App() {
 
   const buttons = [
     {
-      text: currentValue ? 'C' : 'AC',
-      color: "#27f5ce"
+      text: currentExpression ? 'C' : 'AC',
+      color: "#27f5ce",
+      action: () => setCurrentExpression('')
     }
     , {
       text: '+/-',
-      color: "#27f5ce"
-
+      color: "#27f5ce",
+      action: invertSignal
     }, {
       text: "%",
-      color: "#27f5ce"
-
+      color: "#27f5ce",
     }, {
       text: "÷",
       color: "#e26262"
     },
     { text: "7" },
     { text: "8" },
-    { text: "9" }, {
+    { text: "9" },
+    {
       text: "X",
       color: "#e26262"
     },
     { text: "4" },
     { text: "5" },
-    { text: "6" }, {
+    { text: "6" },
+    {
       text: "-",
       color: "#e26262"
     },
-    { text: "1" },
-    { text: "2" },
-    { text: "3" }, { text: "+", color: "#e26262" },
-    { text: <Feather name="rotate-ccw" size={24} /> },
-    { text: "0" },
-    { text: "." }, { text: "=", color: "#e26262" }]
+    {
+      text: "1"
+    },
+    {
+      text: "2"
+    },
+    {
+      text: "3"
+    },
+    { text: "+", color: "#e26262" },
+    {
+      text: <Feather name="rotate-ccw" size={24} />,
+      action: () => setCurrentExpression(currentExpression.substring(0, currentExpression.length - 1))
+    },
+    {
+      text: "0"
+    },
+    {
+      text: ".",
+    },
+    {
+      text: "=", color: "#e26262",
+      action: compute
+    }
+  ]
+
+  function input(character) {
+    if (currentExpression.length < 9) {
+      if (character === '.' && currentExpression.includes('.')) return
+
+      setCurrentExpression(currentExpression + character)
+    } else {
+      ToastAndroid.show('não é possivel inserir mais de 9 digitos',
+        ToastAndroid.SHORT)
+    }
+  }
+
+  function compute() {
+    let expression = currentExpression
+
+    const percentNumbers = expression.match(/[\d\.]+%/g)
+    if (percentNumbers) {
+      percentNumbers.forEach(percentNumber => {
+        const number = Number(percentNumber.replace('%', ''))
+        expression = expression.replace(percentNumber, number / 100)
+      })
+    }
+    try {
+      expression = executeOperation(expression, 'X')
+      expression = executeOperation(expression, '÷')
+      expression = executeOperation(expression, '+')
+      expression = executeOperation(expression, '-')
+    } catch (err) {
+      ToastAndroid.show(err, ToastAndroid.SHORT)
+      return
+    }
+
+    setHistory([...history, currentExpression])
+    setCurrentExpression(expression)
+  }
+
+  function executeOperation(expression, operator) {
+    const operatorForRegex = operator === '+' ? `\\${operator}` : operator
+    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)${operatorForRegex}(\(-[\d\.]+\)|[\d\.]+)`)
+    let operation = expression.match(regex);
+    while (operation !== null) {
+      const values = operation
+        .slice(1)
+        .map(value => {
+          value = value.replace(/[()]/g, '')
+          console.log(value)
+          return Number(value)
+        })
+
+      let result
+      switch (operator) {
+        case 'X': result = values[0] * values[1]
+          break;
+        case '÷':
+          if (values[1] === 0) throw 'não tem como dividir por 0'
+          result = values[0] / values[1]
+          break;
+        case '+': result = values[0] + values[1]
+          break;
+        case '-': result = values[0] - values[1]
+          break;
+
+        default:
+          throw 'operação desconhecida'
+      }
+
+      expression = expression.replace(operation[0], result)
+
+      operation = expression.match(/(\(-[\d\.]+\)|[\d\.]+)X(\(-[\d\.]+\)|[\d\.]+)/)
+    }
+
+    return expression
+  }
+
+  function invertSignal() {
+    const lastNumber = currentExpression.match(/\(-[\d\.]+\)|-?[\d\.]+/g).slice(-1)[0]
+    let newNumber
+    if (lastNumber.match(/\(-[\d\.]+\)/)) {
+      newNumber = lastNumber.match(/[\d\.]+/)[0]
+    }
+    else if(lastNumber.match(/-[\d\.]+/)){
+      newNumber = lastNumber.slice(1)
+    }
+    else {
+      newNumber = `(-${lastNumber})`
+    }
+    setCurrentExpression(
+      currentExpression.slice(0, currentExpression.length - lastNumber.length) + newNumber
+    )
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
-          {history.map(value => {
+          {history.map((value, i) => {
             return <Text
-              key={value}
+              key={i}
               style={styles.historyText}
             >
               {value}
@@ -93,7 +204,7 @@ export default function App() {
 
         <View style={styles.resultContainer}>
           <Text style={styles.resultText}>
-            {currentValue}
+            {currentExpression}
           </Text>
 
         </View>
@@ -106,9 +217,11 @@ export default function App() {
             return <View key={row} style={styles.row}>
               {range(0, 3).map((column) => {
                 const button = buttons[row * 4 + column]
-                return <View
+                const defaultAction = () => input(button.text)
+                return <Pressable
                   key={column}
                   style={styles.button}
+                  onPress={button.action ?? defaultAction}
                 >{button.text === "+/-" ? invertSignalIcon :
                   <Text style={{
                     fontSize: 36,
@@ -117,7 +230,7 @@ export default function App() {
                     {button.text}
                   </Text>
                   }
-                </View>
+                </Pressable>
               })}
             </View>
           })}
