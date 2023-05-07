@@ -9,7 +9,8 @@ export default function App() {
   const [history, setHistory] = useState([])
   const [currentExpression, setCurrentExpression] = useState('-1')
 
-  const invertSignalIcon = <>
+  const operationSymbols = ['+', '-', 'X', '÷', '%']
+  const invertSignalSymbol = <>
     <Text style={{
       position: 'absolute',
       color: '#27f5ce',
@@ -81,7 +82,7 @@ export default function App() {
     { text: "+", color: "#e26262" },
     {
       text: <Feather name="rotate-ccw" size={24} />,
-      action: () => setCurrentExpression(currentExpression.substring(0, currentExpression.length - 1))
+      action: backspace
     },
     {
       text: "0"
@@ -95,18 +96,54 @@ export default function App() {
     }
   ]
 
-  function input(character) {
-    if (currentExpression.length < 9) {
-      if (character === '.' && currentExpression.includes('.')) return
-
-      setCurrentExpression(currentExpression + character)
-    } else {
-      ToastAndroid.show('não é possivel inserir mais de 9 digitos',
-        ToastAndroid.SHORT)
+  function checkIfThereIsNumber() {
+    if (currentExpression.length === 0) {
+      throw 'insira um número primeiro'
     }
   }
 
+  function input(character) {
+
+    if (currentExpression.length >= 9) {
+      ToastAndroid.show('não é possivel inserir mais de 9 digitos', ToastAndroid.SHORT)
+    }
+    if (character === '.' && currentExpression.includes('.')) return
+
+    if (operationSymbols.includes(character)) {
+      try { checkIfThereIsNumber() }
+      catch (error) {
+        ToastAndroid.show(error, ToastAndroid.SHORT)
+        return
+      }
+
+      setCurrentExpression(closeParenthesis(currentExpression) + character)
+    }
+    else setCurrentExpression(currentExpression + character)
+
+  }
+  function backspace() {
+    if (
+      operationSymbols.includes(currentExpression[currentExpression.length - 2])
+      && currentExpression[currentExpression.length - 2] === ')'
+    ) {
+      setCurrentExpression(currentExpression.substring(0, currentExpression.length - 2))
+    }
+    else setCurrentExpression(currentExpression.substring(0, currentExpression.length - 1))
+  }
+
   function compute() {
+    try {
+      checkIfThereIsNumber()
+      if (!currentExpression.match(/^(((\(-[\d\.]+%?\)|-?[\d\.]+%?)[\+-X÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+)$/)
+        && !currentExpression.match(/^(\(-[\d\.]+%?\)|-?[\d\.]+%)$/)) {
+        throw 'operação invalida'
+      }
+    }
+    catch (error) {
+      ToastAndroid.show(error, ToastAndroid.SHORT)
+      return
+    }
+
     let expression = currentExpression
 
     const percentNumbers = expression.match(/[\d\.]+%/g)
@@ -121,8 +158,8 @@ export default function App() {
       expression = executeOperation(expression, '÷')
       expression = executeOperation(expression, '+')
       expression = executeOperation(expression, '-')
-    } catch (err) {
-      ToastAndroid.show(err, ToastAndroid.SHORT)
+    } catch (error) {
+      ToastAndroid.show(error, ToastAndroid.SHORT)
       return
     }
 
@@ -132,14 +169,13 @@ export default function App() {
 
   function executeOperation(expression, operator) {
     const operatorForRegex = operator === '+' ? `\\${operator}` : operator
-    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)${operatorForRegex}(\(-[\d\.]+\)|[\d\.]+)`)
+    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)${operatorForRegex}(\(-[\d\.]+\)?|[\d\.]+)`)
     let operation = expression.match(regex);
     while (operation !== null) {
       const values = operation
         .slice(1)
         .map(value => {
           value = value.replace(/[()]/g, '')
-          console.log(value)
           return Number(value)
         })
 
@@ -159,6 +195,7 @@ export default function App() {
         default:
           throw 'operação desconhecida'
       }
+      if (operation.index !== 0) result = `(${result})`
 
       expression = expression.replace(operation[0], result)
 
@@ -167,24 +204,57 @@ export default function App() {
 
     return expression
   }
-
+  function closeParenthesis(expression) {
+    if (currentExpression.match(/\(-[\d\.]+$/)) return expression + ')'
+    else return expression
+  }
   function invertSignal() {
-    const lastNumber = currentExpression.match(/\(-[\d\.]+\)|-?[\d\.]+/g).slice(-1)[0]
-    let newNumber
-    if (lastNumber.match(/\(-[\d\.]+\)/)) {
-      newNumber = lastNumber.match(/[\d\.]+/)[0]
+    try { checkIfThereIsNumber() }
+    catch (error) {
+      ToastAndroid.show(error, ToastAndroid.SHORT)
+      return
     }
-    else if(lastNumber.match(/-[\d\.]+/)){
-      newNumber = lastNumber.slice(1)
+
+    const regexLastNegativePercent = RegExp(/(?:^-([\d\.]+))|(?:\(-([\d\.]+)%\)?)$/)
+    const regexLastPositivePercent = RegExp(/([\d\.]+)%$/)
+    const regexLastNegativeNumber = RegExp(/(?:^-([\d\.]+))|(?:\(-([\d\.]+)\)?)$/)
+    const regexLastPositiveNumber = RegExp(/[\d\.]+$/)
+    const regexLastMinusSignal = RegExp(/\(-$/)
+    const regexLastOperator = RegExp(/[\+-X÷]$/)
+
+    const regexNumber = RegExp(/[\d\.]+/)
+
+    let newLastTerm, oldLastTerm
+    if (currentExpression.match(regexLastNegativePercent)) {
+      oldLastTerm = currentExpression.match(regexLastNegativePercent)
+      console.log(oldLastTerm)
+      newLastTerm = `${oldLastTerm[0].match(regexNumber)[0]}%`
+    }
+    else if (currentExpression.match(regexLastPositivePercent)) {
+      oldLastTerm = currentExpression.match(regexLastPositivePercent)
+      newLastTerm = `(-${oldLastTerm[0].match(regexNumber)[0]}%)`
+    }
+    else if (currentExpression.match(regexLastNegativeNumber)) {
+      oldLastTerm = currentExpression.match(regexLastNegativeNumber)
+      newLastTerm = oldLastTerm[0].match(regexNumber)[0]
+    }
+    else if (currentExpression.match(regexLastPositiveNumber)) {
+      oldLastTerm = currentExpression.match(regexLastPositiveNumber)
+      newLastTerm = `(-${oldLastTerm[0]}`
+    }
+    else if (currentExpression.match(regexLastMinusSignal)) {
+      newLastTerm = ''
     }
     else {
-      newNumber = `(-${lastNumber})`
+      oldLastTerm = currentExpression.match(regexLastOperator)
+      newLastTerm = oldLastTerm[0] + '(-'
     }
-    setCurrentExpression(
-      currentExpression.slice(0, currentExpression.length - lastNumber.length) + newNumber
-    )
-  }
 
+    setCurrentExpression(
+      currentExpression.slice(0, oldLastTerm.index) + newLastTerm
+    )
+
+  }
   return (
     <View style={styles.container}>
       <View style={styles.visorContainer}>
@@ -218,11 +288,12 @@ export default function App() {
               {range(0, 3).map((column) => {
                 const button = buttons[row * 4 + column]
                 const defaultAction = () => input(button.text)
+
                 return <Pressable
                   key={column}
                   style={styles.button}
                   onPress={button.action ?? defaultAction}
-                >{button.text === "+/-" ? invertSignalIcon :
+                >{button.text === "+/-" ? invertSignalSymbol :
                   <Text style={{
                     fontSize: 36,
                     color: button.color ? button.color : "#f4f4f5"
@@ -231,6 +302,7 @@ export default function App() {
                   </Text>
                   }
                 </Pressable>
+
               })}
             </View>
           })}
