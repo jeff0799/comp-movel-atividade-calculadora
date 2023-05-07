@@ -1,44 +1,17 @@
-import { Alert, Pressable, StyleSheet, Text, View, ToastAndroid } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ToastAndroid } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 const range = (start, end, length = end - start + 1) => Array.from({ length }, (_, i) => start + i)
 
-
+import InvertSignalSymbol from './components/InvertSignalSymbol';
+import ExpressionText from './components/ExpressionText';
 
 export default function App() {
   const [history, setHistory] = useState([])
-  const [currentExpression, setCurrentExpression] = useState('-1')
+  const [currentExpression, setCurrentExpression] = useState('')
 
   const operationSymbols = ['+', '-', 'X', '÷', '%']
-  const invertSignalSymbol = <>
-    <Text style={{
-      position: 'absolute',
-      color: '#27f5ce',
-      fontSize: 20,
-      top: 0,
-      left: '30%'
-    }}>
-      +
-    </Text>
-    <Text style={{
-      position: 'absolute',
-      color: '#27f5ce',
-      fontSize: 28,
-      transform: [{ rotate: '10deg' }]
-    }}>
-      /
-    </Text>
-    <Text style={{
-      position: 'absolute',
-      color: '#27f5ce',
-      fontSize: 20,
-      bottom: 0,
-      right: '35%'
-    }}>
-      -
-    </Text>
-  </>
-
+  
   const buttons = [
     {
       text: currentExpression ? 'C' : 'AC',
@@ -106,6 +79,7 @@ export default function App() {
 
     if (currentExpression.length >= 9) {
       ToastAndroid.show('não é possivel inserir mais de 9 digitos', ToastAndroid.SHORT)
+      return
     }
     if (character === '.' && currentExpression.includes('.')) return
 
@@ -134,7 +108,7 @@ export default function App() {
   function compute() {
     try {
       checkIfThereIsNumber()
-      if (!currentExpression.match(/^(((\(-[\d\.]+%?\)|-?[\d\.]+%?)[\+-X÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+)$/)
+      if (!currentExpression.match(/^(\(-[\d\.]+%?\)|-?[\d\.]+%?)([\+-X÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+$/)
         && !currentExpression.match(/^(\(-[\d\.]+%?\)|-?[\d\.]+%)$/)) {
         throw 'operação invalida'
       }
@@ -260,22 +234,24 @@ export default function App() {
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
-          {history.map((value, i) => {
-            return <Text
+          {history.map((expression, i) => {
+            return <ExpressionText
               key={i}
+              expression={expression}
               style={styles.historyText}
-            >
-              {value}
-            </Text>
+            />
 
           })}
+          
 
         </View>
 
         <View style={styles.resultContainer}>
-          <Text style={styles.resultText}>
-            {currentExpression}
-          </Text>
+          
+          <ExpressionText expression={currentExpression}
+            style={styles.resultText}
+            NumberColor='white'
+            operatorColor='red'/>
 
         </View>
 
@@ -293,7 +269,7 @@ export default function App() {
                   key={column}
                   style={styles.button}
                   onPress={button.action ?? defaultAction}
-                >{button.text === "+/-" ? invertSignalSymbol :
+                >{button.text === "+/-" ? <InvertSignalSymbol color = {button.color}/> :
                   <Text style={{
                     fontSize: 36,
                     color: button.color ? button.color : "#f4f4f5"
@@ -342,7 +318,7 @@ const styles = StyleSheet.create({
     color: "white"
   },
   resultText: {
-    fontSize: 54,
+    fontSize: 50,
     fontWeight: 800,
     color: "white"
   },
