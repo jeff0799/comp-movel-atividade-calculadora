@@ -6,13 +6,14 @@ const range = (start, end, length = end - start + 1) => Array.from({ length }, (
 import InvertSignalSymbol from './components/InvertSignalSymbol';
 import ExpressionText from './components/ExpressionText';
 import { StatusBar } from 'expo-status-bar';
+import { checkIfItIsAValidExpression, checkIfThereIsNumber, checkCharacterLimit } from './utils/validation';
+import { closeParenthesis, executeOperations, executePercentages, roundResult } from './utils/utils';
+import { timesSign, operationSymbols } from './utils/constants';
 
 export default function App() {
   const [history, setHistory] = useState([])
   const [currentExpression, setCurrentExpression] = useState('')
 
-  const timesSign = '×'
-  const operationSymbols = ['+', '-', timesSign, '÷', '%']
 
   const buttons = [
     {
@@ -71,25 +72,10 @@ export default function App() {
     }
   ]
 
-  function checkIfThereIsNumber(expression) {
-    if (expression.length === 0) {
-      throw 'insira um número primeiro'
-    }
-  }
-  function checkIfItIsAValidExpression(expression) {
-    const regexExpressionFormat = RegExp(String.raw`^(\(-[\d\.]+%?\)|-?[\d\.]+%?)([\+-${timesSign}÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+$`)
-    const regexSinglePercentNumber = RegExp(/^(\(-[\d\.]+%?\)|-?[\d\.]+%)$/)
-    const regexSinglePositiveNumber = RegExp(/^-?[\d\.]+$/)
-    if(expression.match(regexSinglePositiveNumber)) throw 'insira alguma operação'
-    if (!expression.match(regexExpressionFormat)
-      && !currentExpression.match(regexSinglePercentNumber)) {
-      throw 'operação invalida'
-    }
-  }
-
   function input(character) {
-    if (currentExpression.length >= 9) {
-      ToastAndroid.show('não é possivel inserir mais de 9 digitos', ToastAndroid.SHORT)
+    try { checkCharacterLimit(currentExpression) }
+    catch (msg) {
+      ToastAndroid.show(msg, ToastAndroid.SHORT)
       return
     }
 
@@ -97,8 +83,8 @@ export default function App() {
 
     if (operationSymbols.includes(character)) {
       try { checkIfThereIsNumber(currentExpression) }
-      catch (error) {
-        ToastAndroid.show(error, ToastAndroid.SHORT)
+      catch (msg) {
+        ToastAndroid.show(msg, ToastAndroid.SHORT)
         return
       }
       if (character === '%') setCurrentExpression(closeParenthesis(currentExpression + character))
@@ -108,10 +94,9 @@ export default function App() {
 
   }
   function backspace() {
-    if (
-      operationSymbols.includes(currentExpression[currentExpression.length - 2])
+    const lastButOneIsCloseParenthesis = operationSymbols.includes(currentExpression[currentExpression.length - 2])
       && currentExpression[currentExpression.length - 2] === ')'
-    ) {
+    if (lastButOneIsCloseParenthesis) {
       setCurrentExpression(currentExpression.substring(0, currentExpression.length - 2))
     }
     else setCurrentExpression(currentExpression.substring(0, currentExpression.length - 1))
@@ -122,8 +107,8 @@ export default function App() {
       checkIfThereIsNumber(currentExpression)
       checkIfItIsAValidExpression(currentExpression)
     }
-    catch (error) {
-      ToastAndroid.show(error, ToastAndroid.SHORT)
+    catch (msg) {
+      ToastAndroid.show(msg, ToastAndroid.SHORT)
       return
     }
 
@@ -134,85 +119,21 @@ export default function App() {
     try {
       expression = executeOperations(expression, [timesSign, '÷'])
       expression = executeOperations(expression, ['+', '-'])
-    } catch (error) {
-      ToastAndroid.show(error, ToastAndroid.SHORT)
+    } catch (msg) {
+      ToastAndroid.show(msg, ToastAndroid.SHORT)
       return
     }
+
+    expression = roundResult(expression)
 
     setHistory([...history, currentExpression])
     setCurrentExpression(expression)
   }
 
-  function executePercentages(expression) {
-    const percentNumbers = expression.match(/[\d\.]+%/g)
-    if (percentNumbers) {
-      percentNumbers.forEach(percentNumber => {
-        const number = Number(percentNumber.replace('%', ''))
-        expression = expression.replace(percentNumber, number / 100)
-      })
-    }
-    return expression
-  }
-
-  function executeOperation(operation) {
-    const regexOperation = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)([\+-${timesSign}÷])(\(-[\d\.]+\)?|[\d\.]+)`)
-    const splitedOperation = operation.match(regexOperation)
-      .slice(1)
-
-    if (!splitedOperation) throw 'operação invalida'
-
-    const values = [splitedOperation[0], splitedOperation[2]]
-      .map(value => {
-        value = value.replace(/[()]/g, '')
-        return Number(value)
-      })
-    const operator = splitedOperation[1]
-
-    let result
-    switch (operator) {
-      case timesSign: result = values[0] * values[1]
-        break;
-      case '÷':
-        if (values[1] === 0) throw 'não tem como dividir por 0'
-        result = values[0] / values[1]
-        break;
-      case '+': result = values[0] + values[1]
-        break;
-      case '-': result = values[0] - values[1]
-        break;
-    }
-
-    return result
-  }
-
-  function executeOperations(expression, operators) {
-    const operatorsString = operators.map((operator) => {
-      if (operator === '+') return '\\+';
-      return operator;
-    }).join('');
-
-    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)[${operatorsString}](\(-[\d\.]+\)?|[\d\.]+)`)
-    let operation = expression.match(regex);
-    while (operation !== null) {
-
-      const result = executeOperation(operation[0])
-      if (operation.index !== 0 && result < 0) result = `(${result})`
-
-      expression = expression.replace(operation[0], result)
-
-      operation = expression.match(regex)
-    }
-
-    return expression
-  }
-  function closeParenthesis(expression) {
-    if (currentExpression.match(/\(-[\d\.]+%?$/)) return expression + ')'
-    else return expression
-  }
   function invertSignal() {
     try { checkIfThereIsNumber(currentExpression) }
-    catch (error) {
-      ToastAndroid.show(error, ToastAndroid.SHORT)
+    catch (msg) {
+      ToastAndroid.show(msg, ToastAndroid.SHORT)
       return
     }
 
@@ -251,7 +172,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style='light'/>
+      <StatusBar style='light' />
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
@@ -269,7 +190,7 @@ export default function App() {
           <ExpressionText expression={currentExpression}
             style={styles.resultText}
             NumberColor='white'
-            operatorColor='red' />
+            operatorColor='#d76161' />
 
         </View>
 
@@ -342,12 +263,12 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     flex: 6,
-    flexWrap: 'wrap', 
+    flexWrap: 'wrap',
     flexDirection: "row",
     gap: 10,
     borderTopEndRadius: 30,
     borderTopStartRadius: 30,
-    justifyContent: "space-between", 
+    justifyContent: "space-between",
     alignContent: "space-between",
     paddingBottom: 40,
     paddingHorizontal: 15,
