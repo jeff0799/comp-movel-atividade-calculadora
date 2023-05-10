@@ -5,6 +5,7 @@ const range = (start, end, length = end - start + 1) => Array.from({ length }, (
 
 import InvertSignalSymbol from './components/InvertSignalSymbol';
 import ExpressionText from './components/ExpressionText';
+import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
   const [history, setHistory] = useState([])
@@ -250,6 +251,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style='light'/>
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
