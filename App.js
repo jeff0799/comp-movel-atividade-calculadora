@@ -10,8 +10,9 @@ export default function App() {
   const [history, setHistory] = useState([])
   const [currentExpression, setCurrentExpression] = useState('')
 
-  const operationSymbols = ['+', '-', 'X', '÷', '%']
-  
+  const timesSign = '×'
+  const operationSymbols = ['+', '-', timesSign, '÷', '%']
+
   const buttons = [
     {
       text: currentExpression ? 'C' : 'AC',
@@ -33,7 +34,7 @@ export default function App() {
     { text: "8" },
     { text: "9" },
     {
-      text: "X",
+      text: timesSign,
       color: "#e26262"
     },
     { text: "4" },
@@ -69,28 +70,38 @@ export default function App() {
     }
   ]
 
-  function checkIfThereIsNumber() {
-    if (currentExpression.length === 0) {
+  function checkIfThereIsNumber(expression) {
+    if (expression.length === 0) {
       throw 'insira um número primeiro'
+    }
+  }
+  function checkIfItIsAValidExpression(expression) {
+    const regexExpressionFormat = RegExp(String.raw`^(\(-[\d\.]+%?\)|-?[\d\.]+%?)([\+-${timesSign}÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+$`)
+    const regexSinglePercentNumber = RegExp(/^(\(-[\d\.]+%?\)|-?[\d\.]+%)$/)
+    const regexSinglePositiveNumber = RegExp(/^-?[\d\.]+$/)
+    if(expression.match(regexSinglePositiveNumber)) throw 'insira alguma operação'
+    if (!expression.match(regexExpressionFormat)
+      && !currentExpression.match(regexSinglePercentNumber)) {
+      throw 'operação invalida'
     }
   }
 
   function input(character) {
-
     if (currentExpression.length >= 9) {
       ToastAndroid.show('não é possivel inserir mais de 9 digitos', ToastAndroid.SHORT)
       return
     }
+
     if (character === '.' && currentExpression.includes('.')) return
 
     if (operationSymbols.includes(character)) {
-      try { checkIfThereIsNumber() }
+      try { checkIfThereIsNumber(currentExpression) }
       catch (error) {
         ToastAndroid.show(error, ToastAndroid.SHORT)
         return
       }
-
-      setCurrentExpression(closeParenthesis(currentExpression) + character)
+      if (character === '%') setCurrentExpression(closeParenthesis(currentExpression + character))
+      else setCurrentExpression(closeParenthesis(currentExpression) + character)
     }
     else setCurrentExpression(currentExpression + character)
 
@@ -107,11 +118,8 @@ export default function App() {
 
   function compute() {
     try {
-      checkIfThereIsNumber()
-      if (!currentExpression.match(/^(\(-[\d\.]+%?\)|-?[\d\.]+%?)([\+-X÷](\(-[\d\.]+%?\)?|[\d\.]+%?))+$/)
-        && !currentExpression.match(/^(\(-[\d\.]+%?\)|-?[\d\.]+%)$/)) {
-        throw 'operação invalida'
-      }
+      checkIfThereIsNumber(currentExpression)
+      checkIfItIsAValidExpression(currentExpression)
     }
     catch (error) {
       ToastAndroid.show(error, ToastAndroid.SHORT)
@@ -120,18 +128,11 @@ export default function App() {
 
     let expression = currentExpression
 
-    const percentNumbers = expression.match(/[\d\.]+%/g)
-    if (percentNumbers) {
-      percentNumbers.forEach(percentNumber => {
-        const number = Number(percentNumber.replace('%', ''))
-        expression = expression.replace(percentNumber, number / 100)
-      })
-    }
+    expression = executePercentages(expression)
+
     try {
-      expression = executeOperation(expression, 'X')
-      expression = executeOperation(expression, '÷')
-      expression = executeOperation(expression, '+')
-      expression = executeOperation(expression, '-')
+      expression = executeOperations(expression, [timesSign, '÷'])
+      expression = executeOperations(expression, ['+', '-'])
     } catch (error) {
       ToastAndroid.show(error, ToastAndroid.SHORT)
       return
@@ -141,94 +142,112 @@ export default function App() {
     setCurrentExpression(expression)
   }
 
-  function executeOperation(expression, operator) {
-    const operatorForRegex = operator === '+' ? `\\${operator}` : operator
-    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)${operatorForRegex}(\(-[\d\.]+\)?|[\d\.]+)`)
+  function executePercentages(expression) {
+    const percentNumbers = expression.match(/[\d\.]+%/g)
+    if (percentNumbers) {
+      percentNumbers.forEach(percentNumber => {
+        const number = Number(percentNumber.replace('%', ''))
+        expression = expression.replace(percentNumber, number / 100)
+      })
+    }
+    return expression
+  }
+
+  function executeOperation(operation) {
+    const regexOperation = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)([\+-${timesSign}÷])(\(-[\d\.]+\)?|[\d\.]+)`)
+    const splitedOperation = operation.match(regexOperation)
+      .slice(1)
+
+    if (!splitedOperation) throw 'operação invalida'
+
+    const values = [splitedOperation[0], splitedOperation[2]]
+      .map(value => {
+        value = value.replace(/[()]/g, '')
+        return Number(value)
+      })
+    const operator = splitedOperation[1]
+
+    let result
+    switch (operator) {
+      case timesSign: result = values[0] * values[1]
+        break;
+      case '÷':
+        if (values[1] === 0) throw 'não tem como dividir por 0'
+        result = values[0] / values[1]
+        break;
+      case '+': result = values[0] + values[1]
+        break;
+      case '-': result = values[0] - values[1]
+        break;
+    }
+
+    return result
+  }
+
+  function executeOperations(expression, operators) {
+    const operatorsString = operators.map((operator) => {
+      if (operator === '+') return '\\+';
+      return operator;
+    }).join('');
+
+    const regex = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)[${operatorsString}](\(-[\d\.]+\)?|[\d\.]+)`)
     let operation = expression.match(regex);
     while (operation !== null) {
-      const values = operation
-        .slice(1)
-        .map(value => {
-          value = value.replace(/[()]/g, '')
-          return Number(value)
-        })
 
-      let result
-      switch (operator) {
-        case 'X': result = values[0] * values[1]
-          break;
-        case '÷':
-          if (values[1] === 0) throw 'não tem como dividir por 0'
-          result = values[0] / values[1]
-          break;
-        case '+': result = values[0] + values[1]
-          break;
-        case '-': result = values[0] - values[1]
-          break;
-
-        default:
-          throw 'operação desconhecida'
-      }
-      if (operation.index !== 0) result = `(${result})`
+      const result = executeOperation(operation[0])
+      if (operation.index !== 0 && result < 0) result = `(${result})`
 
       expression = expression.replace(operation[0], result)
 
-      operation = expression.match(/(\(-[\d\.]+\)|[\d\.]+)X(\(-[\d\.]+\)|[\d\.]+)/)
+      operation = expression.match(regex)
     }
 
     return expression
   }
   function closeParenthesis(expression) {
-    if (currentExpression.match(/\(-[\d\.]+$/)) return expression + ')'
+    if (currentExpression.match(/\(-[\d\.]+%?$/)) return expression + ')'
     else return expression
   }
   function invertSignal() {
-    try { checkIfThereIsNumber() }
+    try { checkIfThereIsNumber(currentExpression) }
     catch (error) {
       ToastAndroid.show(error, ToastAndroid.SHORT)
       return
     }
 
-    const regexLastNegativePercent = RegExp(/(?:^-([\d\.]+))|(?:\(-([\d\.]+)%\)?)$/)
-    const regexLastPositivePercent = RegExp(/([\d\.]+)%$/)
-    const regexLastNegativeNumber = RegExp(/(?:^-([\d\.]+))|(?:\(-([\d\.]+)\)?)$/)
-    const regexLastPositiveNumber = RegExp(/[\d\.]+$/)
+    const regexLastNegativeNumber = RegExp(/(?:^-([\d\.]+))|(?:\(-([\d\.]+)%?\)?)$/)
+    const regexLastPositiveNumber = RegExp(/[\d\.]+%?$/)
     const regexLastMinusSignal = RegExp(/\(-$/)
-    const regexLastOperator = RegExp(/[\+-X÷]$/)
+    const regexLastOperator = RegExp(String.raw`[\+-${timesSign}÷]$`)
 
-    const regexNumber = RegExp(/[\d\.]+/)
+    const regexNumber = RegExp(/[\d\.]+%?/)
 
     let newLastTerm, oldLastTerm
-    if (currentExpression.match(regexLastNegativePercent)) {
-      oldLastTerm = currentExpression.match(regexLastNegativePercent)
-      console.log(oldLastTerm)
-      newLastTerm = `${oldLastTerm[0].match(regexNumber)[0]}%`
-    }
-    else if (currentExpression.match(regexLastPositivePercent)) {
-      oldLastTerm = currentExpression.match(regexLastPositivePercent)
-      newLastTerm = `(-${oldLastTerm[0].match(regexNumber)[0]}%)`
-    }
-    else if (currentExpression.match(regexLastNegativeNumber)) {
-      oldLastTerm = currentExpression.match(regexLastNegativeNumber)
-      newLastTerm = oldLastTerm[0].match(regexNumber)[0]
+    if (currentExpression.match(regexLastNegativeNumber)) {
+      oldLastTerm = currentExpression.match(regexLastNegativeNumber);
+      const numberValue = oldLastTerm[0].match(regexNumber)[0];
+      newLastTerm = numberValue;
     }
     else if (currentExpression.match(regexLastPositiveNumber)) {
-      oldLastTerm = currentExpression.match(regexLastPositiveNumber)
-      newLastTerm = `(-${oldLastTerm[0]}`
+      oldLastTerm = currentExpression.match(regexLastPositiveNumber);
+      const numberValue = oldLastTerm[0];
+      if (numberValue[numberValue.length - 1] === '%') newLastTerm = `(-${numberValue})`;
+      else newLastTerm = `(-${numberValue}`;
     }
     else if (currentExpression.match(regexLastMinusSignal)) {
-      newLastTerm = ''
+      oldLastTerm = currentExpression.match(regexLastMinusSignal);
+      newLastTerm = '';
     }
     else {
-      oldLastTerm = currentExpression.match(regexLastOperator)
-      newLastTerm = oldLastTerm[0] + '(-'
+      oldLastTerm = currentExpression.match(regexLastOperator);
+      newLastTerm = oldLastTerm[0] + '(-';
     }
 
     setCurrentExpression(
       currentExpression.slice(0, oldLastTerm.index) + newLastTerm
     )
-
   }
+
   return (
     <View style={styles.container}>
       <View style={styles.visorContainer}>
@@ -240,18 +259,15 @@ export default function App() {
               expression={expression}
               style={styles.historyText}
             />
-
           })}
-          
 
         </View>
 
         <View style={styles.resultContainer}>
-          
           <ExpressionText expression={currentExpression}
             style={styles.resultText}
             NumberColor='white'
-            operatorColor='red'/>
+            operatorColor='red' />
 
         </View>
 
@@ -269,7 +285,7 @@ export default function App() {
                   key={column}
                   style={styles.button}
                   onPress={button.action ?? defaultAction}
-                >{button.text === "+/-" ? <InvertSignalSymbol color = {button.color}/> :
+                >{button.text === "+/-" ? <InvertSignalSymbol color={button.color} /> :
                   <Text style={{
                     fontSize: 36,
                     color: button.color ? button.color : "#f4f4f5"
@@ -357,7 +373,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: '#14161A',
-    borderRadius:10
+    borderRadius: 10
   }
 
 });
