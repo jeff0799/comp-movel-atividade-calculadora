@@ -16,33 +16,33 @@ export default function App() {
   const buttons = [
     {
       text: currentExpression ? 'C' : 'AC',
-      color: "#27f5ce",
+      color: "#27fbd5",
       action: () => setCurrentExpression('')
     }
     , {
       text: '+/-',
-      color: "#27f5ce",
+      color: "#27fbd5",
       action: invertSignal
     }, {
       text: "%",
-      color: "#27f5ce",
+      color: "#27fbd5",
     }, {
       text: "÷",
-      color: "#e26262"
+      color: "#d76161"
     },
     { text: "7" },
     { text: "8" },
     { text: "9" },
     {
       text: timesSign,
-      color: "#e26262"
+      color: "#d76161"
     },
     { text: "4" },
     { text: "5" },
     { text: "6" },
     {
       text: "-",
-      color: "#e26262"
+      color: "#d76161"
     },
     {
       text: "1"
@@ -53,7 +53,7 @@ export default function App() {
     {
       text: "3"
     },
-    { text: "+", color: "#e26262" },
+    { text: "+", color: "#d76161" },
     {
       text: <Feather name="rotate-ccw" size={24} />,
       action: backspace
@@ -65,7 +65,7 @@ export default function App() {
       text: ".",
     },
     {
-      text: "=", color: "#e26262",
+      text: "=", color: "#d76161",
       action: compute
     }
   ]
@@ -309,10 +309,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: "#1e1e1e"
+    backgroundColor: "#22242c"
   },
   visorContainer: {
-    backgroundColor: "#1e1e1e",
+    backgroundColor: "#22242c",
     flex: 4,
     width: "100%"
   },
@@ -339,16 +339,18 @@ const styles = StyleSheet.create({
     color: "white"
   },
   buttonsContainer: {
-    flex: 6, backgroundColor: "#3f3d41",
-    flexWrap: 'wrap', flexDirection: "row",
+    flex: 6,
+    flexWrap: 'wrap', 
+    flexDirection: "row",
     gap: 10,
-    borderTopEndRadius: 10,
-    borderTopStartRadius: 10,
-    justifyContent: "space-between", alignContent: "space-between",
-    paddingBottom: 70,
+    borderTopEndRadius: 30,
+    borderTopStartRadius: 30,
+    justifyContent: "space-between", 
+    alignContent: "space-between",
+    paddingBottom: 40,
     paddingHorizontal: 15,
     paddingTop: 10,
-    backgroundColor: "#22252d"
+    backgroundColor: "#282c36"
   },
   column: {
     flexDirection: "column",
@@ -372,7 +374,7 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: '#14161A',
+    backgroundColor: '#262a33',
     borderRadius: 10
   }
 
