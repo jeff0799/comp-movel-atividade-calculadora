@@ -26,7 +26,7 @@ export default function ExpressionText(props) {
                                 style={{
                                     color: props.operatorColor ?? 'red'
                                 }}>
-                                {operators[i]}
+                                {' ' + operators[i] + ' '}
                             </Text>
                             : null}
                     </Text>
