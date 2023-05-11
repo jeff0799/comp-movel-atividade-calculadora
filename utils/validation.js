@@ -1,8 +1,10 @@
 import { timesSign } from "./constants"
 
 
-export function checkCharacterLimit(expression) {
-    if (expression.length >= 9) {
+export function checkDigitLimit(expression) {
+    const lastNumberObject = expression.match(/([\d\.])+$/)
+    const lastNumber = lastNumberObject ? lastNumberObject[0] : null
+    if (lastNumber && lastNumber.length >= 9) {
         throw 'não é possivel inserir mais de 9 digitos'
     }
 }

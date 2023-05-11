@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View, ToastAndroid } from 'react-native';
+import { Pressable, Text, View, ToastAndroid } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 const range = (start, end, length = end - start + 1) => Array.from({ length }, (_, i) => start + i)
@@ -6,9 +6,9 @@ const range = (start, end, length = end - start + 1) => Array.from({ length }, (
 import InvertSignalSymbol from './components/InvertSignalSymbol';
 import ExpressionText from './components/ExpressionText';
 import { StatusBar } from 'expo-status-bar';
-import { checkIfItIsAValidExpression, checkIfThereIsNumber, checkCharacterLimit } from './utils/validation';
-import { closeParenthesis, executeOperations, executePercentages, roundResult } from './utils/utils';
+import { checkIfItIsAValidExpression, checkIfThereIsNumber, checkDigitLimit } from './utils/validation';
 import { timesSign, operationSymbols } from './utils/constants';
+import styles from './styles/darkStyles'
 
 export default function App() {
   const [history, setHistory] = useState([])
@@ -73,14 +73,19 @@ export default function App() {
   ]
 
   function input(character) {
-    try { checkCharacterLimit(currentExpression) }
+    try {
+      if (character.match(/[\d\.]/)) checkDigitLimit(currentExpression)
+    }
     catch (msg) {
       ToastAndroid.show(msg, ToastAndroid.SHORT)
       return
     }
 
-    if (character === '.' && currentExpression.includes('.')) return
-
+    if (character === '.' ) {
+      const lastNumberObject = currentExpression.match(/([\d\.])+$/)
+      const lastNumber = lastNumberObject ? lastNumberObject[0] : null
+      if (lastNumber.includes('.')) return
+    }
     if (operationSymbols.includes(character)) {
       try { checkIfThereIsNumber(currentExpression) }
       catch (msg) {
@@ -170,9 +175,88 @@ export default function App() {
     )
   }
 
+  function removeParenthesis(numbers) {
+    return numbers.map(value => {
+      value = value.replace(/[()]/g, '')
+      return Number(value)
+    })
+  }
+
+  function closeParenthesis(expression) {
+    if (expression.match(/\(-[\d\.]+%?$/)) return expression + ')'
+    else return expression
+  }
+
+  function executePercentages(expression) {
+    const percentNumbers = expression.match(/[\d\.]+%/g)
+    if (percentNumbers) {
+      percentNumbers.forEach(percentNumber => {
+        const number = Number(percentNumber.replace('%', ''))
+        expression = expression.replace(percentNumber, number / 100)
+      })
+    }
+    return expression
+  }
+
+  function executeOperation(operation) {
+    const regexOperation = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)([\+-${timesSign}÷])(\(-[\d\.]+\)?|[\d\.]+)`)
+    const splitedOperation = operation.match(regexOperation)
+      .slice(1)
+
+    if (!splitedOperation) throw 'operação invalida'
+
+    const values = removeParenthesis([splitedOperation[0], splitedOperation[2]])
+
+    const operator = splitedOperation[1]
+
+    let result
+    switch (operator) {
+      case timesSign: result = values[0] * values[1]
+        break;
+      case '÷':
+        if (values[1] === 0) throw 'não tem como dividir por 0'
+        result = values[0] / values[1]
+        break;
+      case '+': result = values[0] + values[1]
+        break;
+      case '-': result = values[0] - values[1]
+        break;
+    }
+
+    return result
+  }
+
+  function executeOperations(expression, operators) {
+    const operatorsString = operators.map((operator) => {
+      if (operator === '+') return '\\+';
+      return operator;
+    }).join('');
+
+    const regexOperationformat = RegExp(String.raw`(\(-[\d\.]+\)|-?[\d\.]+)[${operatorsString}](\(-[\d\.]+\)?|[\d\.]+)`)
+    let operation = expression.match(regexOperationformat);
+    while (operation !== null) {
+
+      const result = executeOperation(operation[0])
+      if (operation.index !== 0 && result < 0) result = `(${result})`
+
+      expression = expression.replace(operation[0], result)
+
+      operation = expression.match(regexOperationformat)
+    }
+
+    return expression
+  }
+
+  function roundResult(stringNumber) {
+    const number = Number(stringNumber)
+    const roundedNumber = Math.round(number * 10 ** 5) / 10 ** 5
+    return String(roundedNumber)
+  }
+
   return (
     <View style={styles.container}>
-      <StatusBar style='light' />
+      <StatusBar style='light'
+        backgroundColor='black' />
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
@@ -227,78 +311,4 @@ export default function App() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: "#22242c"
-  },
-  visorContainer: {
-    backgroundColor: "#22242c",
-    flex: 4,
-    width: "100%"
-  },
-  historyContainer: {
-    flex: 2,
-    justifyContent: "flex-end",
-    alignItems: "flex-end",
-    padding: 10
-  },
-  resultContainer: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "flex-end",
-    alignItems: "flex-end",
-    padding: 10
-  },
-  historyText: {
-    fontSize: 30,
-    color: "white"
-  },
-  resultText: {
-    fontSize: 50,
-    fontWeight: 800,
-    color: "white"
-  },
-  buttonsContainer: {
-    flex: 6,
-    flexWrap: 'wrap',
-    flexDirection: "row",
-    gap: 10,
-    borderTopEndRadius: 30,
-    borderTopStartRadius: 30,
-    justifyContent: "space-between",
-    alignContent: "space-between",
-    paddingBottom: 40,
-    paddingHorizontal: 15,
-    paddingTop: 10,
-    backgroundColor: "#282c36"
-  },
-  column: {
-    flexDirection: "column",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flex: 1,
-    gap: 10,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flex: 1,
-    flexGrow: 1,
-    width: "100%",
-    gap: 30,
-  },
-  button: {
-    flex: 1,
-    width: 40,
-    height: 60,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: '#262a33',
-    borderRadius: 10
-  }
 
-});
