@@ -81,10 +81,9 @@ export default function App() {
       return
     }
 
-    if (character === '.' ) {
-      const lastNumberObject = currentExpression.match(/([\d\.])+$/)
-      const lastNumber = lastNumberObject ? lastNumberObject[0] : null
-      if (lastNumber.includes('.')) return
+    if (character === '.') {
+      const lastNumber= currentExpression.match(/([\d\.])+$/)
+      if (lastNumber && lastNumber[0].includes('.')) return
     }
     if (operationSymbols.includes(character)) {
       try { checkIfThereIsNumber(currentExpression) }
@@ -257,6 +256,7 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style='light'
         backgroundColor='black' />
+
       <View style={styles.visorContainer}>
         <View style={styles.historyContainer}>
 
@@ -290,8 +290,10 @@ export default function App() {
 
                 return <Pressable
                   key={column}
-                  style={styles.button}
                   onPress={button.action ?? defaultAction}
+                  style={({ pressed }) => [styles.button,
+                    pressed ? styles.buttonPressed : {}
+                  ]}
                 >{button.text === "+/-" ? <InvertSignalSymbol color={button.color} /> :
                   <Text style={{
                     fontSize: 36,

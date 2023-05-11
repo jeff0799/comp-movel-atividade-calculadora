@@ -72,6 +72,9 @@ export default styles = StyleSheet.create({
       alignItems: "center",
       backgroundColor: '#262a33',
       borderRadius: 10
+    },
+    buttonPressed:{
+      backgroundColor: '#363a43'
     }
   
   });
